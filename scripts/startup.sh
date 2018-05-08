@@ -123,9 +123,15 @@ if [ "$RESULT" -eq 0 ]; then
   sudo modprobe usbtv           # Load the EasyCap driver
   sudo modprobe em28xx        # Load the EasyCap driver
   sudo modprobe stk1160        # Load the EasyCap driver
-# Comment out reload of uvcvideo as it causes shutdown to hang
-#  sudo modprobe uvcvideo        # Load the EasyCap driver
-# replace usbtv with your EasyCap driver name
+  # Comment out reload of uvcvideo as it causes shutdown to hang
+  #  sudo modprobe uvcvideo        # Load the EasyCap driver
+
+  # Reload uvcvideo if Webcam C170 present
+  lsusb | grep 'Webcam C170' >/dev/null 2>/dev/null
+  RESULT="$?"
+  if [ "$RESULT" -eq 0 ]; then
+    sudo modprobe uvcvideo
+  fi
 fi
 
 # Map the touchscreen event to /dev/input/touchscreen
@@ -171,22 +177,6 @@ case "$MODE_STARTUP" in
     return
   ;;
   Display_boot)
-    # First start DATV Express Server if required
-    MODE_OUTPUT=$(get_config_var modeoutput $PCONFIGFILE)
-    if [ "$MODE_OUTPUT" == "DATVEXPRESS" ]; then
-      if pgrep -x "express_server" > /dev/null; then
-        : # Express already running
-      else
-        # Not running and needed, so start it
-        # Make sure that the Control file is not locked
-        sudo rm /tmp/expctrl >/dev/null 2>/dev/null
-        # From its own folder otherwise it doesn't read the config file
-        cd /home/pi/express_server
-        sudo nice -n -40 /home/pi/express_server/express_server  >/dev/null 2>/dev/null &
-        cd /home/pi
-        sleep 5                # Give it time to start
-      fi
-    fi
     # Start the Touchscreen Scheduler
     source /home/pi/rpidatv/scripts/scheduler.sh
     return
