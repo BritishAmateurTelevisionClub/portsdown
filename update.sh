@@ -58,16 +58,13 @@ DisplayUpdateMsg "Step 4 of 10\nUpdating Software Packages\n\nXXXX------"
 # http://unix.stackexchange.com/questions/124468/how-do-i-resolve-an-apparent-hanging-update-process
 sudo apt-get -y remove apt-listchanges
 
-# Prepare to update the distribution (added 20170405)
-sudo dpkg --configure -a
-sudo apt-get clean
-sudo apt-get update
+sudo dpkg --configure -a     # Make sure that all the packages are properly configured
+sudo apt-get clean           # Clean up the old archived packages
+sudo apt-get update          # Update the package list
 
 DisplayUpdateMsg "Step 4a of 10\nStill Updating Software Packages\n\nXXXX------"
 
-# Update the distribution (added 20170403)
-sudo apt-get -y dist-upgrade
-sudo apt-get update
+sudo apt-get -y dist-upgrade # Upgrade all the installed packages to their latest version
 
 # Enable USB Storage automount in Stretch (only) 20180704
 cd /lib/systemd/system/
@@ -233,6 +230,12 @@ make
 mv keyedtx /home/pi/rpidatv/bin/
 cd /home/pi
 
+# Compile and install the executable for the Stream Receiver (201807290)
+cd /home/pi/rpidatv/src/streamrx
+make
+mv streamrx /home/pi/rpidatv/bin/
+cd /home/pi
+
 # Compile the Signal Generator (201710280)
 cd /home/pi/rpidatv/src/siggen
 make clean
@@ -245,6 +248,10 @@ cd /home/pi/rpidatv/src/atten
 make
 cp /home/pi/rpidatv/src/atten/set_attenuator /home/pi/rpidatv/bin/set_attenuator
 cd /home/pi
+
+# Always auto-logon and run .bashrc (and hence startup.sh) (20180729)
+sudo ln -fs /etc/systemd/system/autologin@.service\
+ /etc/systemd/system/getty.target.wants/getty@tty1.service
 
 # Restore the user's original siggencal.txt if required
 if [ -f "/home/pi/siggencal.txt" ]; then
@@ -303,9 +310,9 @@ cp -f -r /home/pi/prev_installed_version.txt /home/pi/rpidatv/scripts/prev_insta
 rm -rf /home/pi/prev_installed_version.txt
 
 # Reboot
-DisplayUpdateMsg "Step 10 of 10\nRebooting\n\nXXXXXXXXXX"
+DisplayUpdateMsg "Step 10 of 10\nRebooting\n\nSafe to Power Off and On"
 printf "\nRebooting\n"
 sleep 1
-sudo reboot now
+sudo shutdown -r now  # Seems to be more reliable than reboot
 
 exit
