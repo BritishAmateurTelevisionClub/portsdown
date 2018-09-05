@@ -1,25 +1,25 @@
 #!/bin/bash
 
-# Stretch Version by davecrump on 20180715
+# Stretch Version by davecrump on 20180905
 
 # Update the package manager
 sudo dpkg --configure -a
-sudo apt-get clean
 sudo apt-get update
 
 # Uninstall the apt-listchanges package to allow silent install of ca certificates (201704030)
 # http://unix.stackexchange.com/questions/124468/how-do-i-resolve-an-apparent-hanging-update-process
 sudo apt-get -y remove apt-listchanges
 
+# -------- Do not upgrade distribution until firmware IL and mmal issues are fixed ------
+
 # Update the distribution
-sudo apt-get -y dist-upgrade
-sudo apt-get update
+#sudo apt-get -y dist-upgrade
 
 # Install the packages that we need
-sudo apt-get -y install apt-transport-https git rpi-update
-sudo apt-get -y install cmake libusb-1.0-0-dev g++ libx11-dev buffer libjpeg-dev indent 
-sudo apt-get -y install libfreetype6-dev ttf-dejavu-core bc usbmount fftw3-dev wiringpi libvncserver-dev
-sudo apt-get -y install fbi netcat imagemagick htop
+sudo apt-get -y install git
+sudo apt-get -y install cmake libusb-1.0-0-dev libx11-dev buffer libjpeg-dev indent 
+sudo apt-get -y install ttf-dejavu-core bc usbmount fftw3-dev wiringpi libvncserver-dev
+sudo apt-get -y install fbi netcat imagemagick rng-tools
 sudo apt-get -y install libvdpau-dev libva-dev libxcb-shape0  # For latest ffmpeg build
 sudo apt-get -y install python-pip pandoc python-numpy pandoc python-pygame gdebi-core # 20180101 FreqShow
 
@@ -193,6 +193,8 @@ sudo sed -i 's/sync,//g' /etc/usbmount/usbmount.conf
 # Download, compile and install the executable for hardware shutdown button
 # Updated version that is less trigger-happy (201705200)
 git clone https://github.com/philcrump/pi-sdn /home/pi/pi-sdn-build
+# Install new version that sets swapoff
+cp -f /home/pi/rpidatv/src/pi-sdn/main.c /home/pi/pi-sdn-build/main.c
 cd /home/pi/pi-sdn-build
 make
 mv pi-sdn /home/pi/

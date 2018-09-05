@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Updated by davecrump 201807150
+# Updated by davecrump 201809050
 
 DisplayUpdateMsg() {
   # Delete any old update message image  201802040
@@ -64,7 +64,13 @@ sudo apt-get update          # Update the package list
 
 DisplayUpdateMsg "Step 4a of 10\nStill Updating Software Packages\n\nXXXX------"
 
-sudo apt-get -y dist-upgrade # Upgrade all the installed packages to their latest version
+# --------- Do not update packages until mmal and IL firmware issues are fixed ------
+
+# sudo apt-get -y dist-upgrade # Upgrade all the installed packages to their latest version
+
+# --------- Install the Random Number Generator ------
+
+sudo apt-get -y install rng-tools # This makes sure that there is enough entropy for wget
 
 # Enable USB Storage automount in Stretch (only) 20180704
 cd /lib/systemd/system/
@@ -107,6 +113,7 @@ DisplayUpdateMsg "Step 6 of 10\nCompiling Portsdown SW\n\nXXXXXX----"
 # Compile rpidatv core
 sudo killall -9 rpidatv
 cd rpidatv/src
+touch rpidatv.c
 make clean
 make
 sudo make install
@@ -217,6 +224,13 @@ if ! grep -q timeout /etc/dhcpcd.conf; then
   sudo bash -c 'echo -e "\n# Shorten dhcpcd timeout from 30 to 5 secs" >> /etc/dhcpcd.conf'
   sudo bash -c 'echo -e "timeout 5\n" >> /etc/dhcpcd.conf'
 fi
+
+# Compile updated pi-sdn that sets swapoff
+cp -f /home/pi/rpidatv/src/pi-sdn/main.c /home/pi/pi-sdn-build/main.c
+cd /home/pi/pi-sdn-build
+make
+mv pi-sdn /home/pi/
+cd /home/pi
 
 # Compile and install the executable for switched repeater streaming (201708150)
 cd /home/pi/rpidatv/src/rptr

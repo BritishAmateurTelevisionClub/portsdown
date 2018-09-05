@@ -27,7 +27,9 @@ DisplayUpdateMsg "1 Upgrading existing packages"
 sudo dpkg --configure -a     # Make sure that all the packages are properly configured
 sudo apt-get clean           # Clean up the old archived packages
 sudo apt-get update          # Update the package list
-sudo apt-get -y dist-upgrade # Upgrade all the installed packages to their latest version
+
+# --- Do not upgrade firmware until mmal fix is ready ----
+#sudo apt-get -y dist-upgrade # Upgrade all the installed packages to their latest version
 
 DisplayUpdateMsg "2 Installing new packages"
 
