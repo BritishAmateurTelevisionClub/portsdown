@@ -48,7 +48,9 @@ MODE_OUTPUT=$(get_config_var modeoutput $PCONFIGFILE)
   sudo killall rpidatv >/dev/null 2>/dev/null
   sudo killall ffmpeg >/dev/null 2>/dev/null
   sudo killall tcanim >/dev/null 2>/dev/null
+  sudo killall tcanim1v16 >/dev/null 2>/dev/null
   sudo killall avc2ts >/dev/null 2>/dev/null
+  sudo killall avc2ts.old >/dev/null 2>/dev/null
   sudo killall netcat >/dev/null 2>/dev/null
   sudo killall dvb2iq >/dev/null 2>/dev/null
   sudo killall limetx >/dev/null 2>/dev/null
@@ -64,6 +66,7 @@ MODE_OUTPUT=$(get_config_var modeoutput $PCONFIGFILE)
   # Then pause and make sure that avc2ts has really been stopped (needed at high SRs)
   sleep 0.1
   sudo killall -9 avc2ts >/dev/null 2>/dev/null
+  sudo killall -9 avc2ts.old >/dev/null 2>/dev/null
 
   # And make sure rpidatv has been stopped (required for brief transmit selections)
   sudo killall -9 rpidatv >/dev/null 2>/dev/null
@@ -75,6 +78,14 @@ MODE_OUTPUT=$(get_config_var modeoutput $PCONFIGFILE)
   gpio mode $GPIO_PTT out
   gpio write $GPIO_PTT 0
 
+  # Kill a.sh which sometimes hangs during testing
+  sudo killall a.sh >/dev/null 2>/dev/null
+
+  # Kill the streamer process
+  sudo killall keyedstream >/dev/null 2>/dev/null
+
+  # Kill the keyed transmit process
+  sudo killall keyedtx >/dev/null 2>/dev/null
 
   # Check if driver for Logitech C270 or C525 needs to be reloaded
   dmesg | grep -E -q "046d:0825|Webcam C525"
