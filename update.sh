@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Updated by davecrump 201810270
+# Updated by davecrump 201811170
 
 DisplayUpdateMsg() {
   # Delete any old update message image  201802040
@@ -87,9 +87,9 @@ sudo apt-get update          # Update the package list
 
 DisplayUpdateMsg "Step 4a of 10\nStill Updating Software Packages\n\nXXXX------"
 
-# --------- Do not update packages until mmal and IL firmware issues are fixed ------
+# --------- Update Packages ------
 
-# sudo apt-get -y dist-upgrade # Upgrade all the installed packages to their latest version
+sudo apt-get -y dist-upgrade # Upgrade all the installed packages to their latest version
 
 # --------- Install the Random Number Generator ------
 
@@ -130,6 +130,7 @@ cp -f -r portsdown-master/video rpidatv
 cp -f -r portsdown-master/version_history.txt rpidatv/version_history.txt
 rm master.zip
 rm -rf portsdown-master
+cd /home/pi
 
 # Check which avc2ts to download.  Default is production
 # option d is development from davecrump
@@ -143,7 +144,7 @@ fi
 
 # Unzip the avc2ts software and copy to the Pi
 unzip -o master.zip
-cp -f -r avc2ts-master avc2ts
+cp -f -r avc2ts-master/* /home/pi/avc2ts
 rm master.zip
 rm -rf avc2ts-master
 
@@ -206,7 +207,7 @@ if [ ! -f "/home/pi/avc2ts/libmpegts/version.sh" ]; then
   sudo apt-get -y install libvncserver-dev libavcodec-dev libavformat-dev libswscale-dev libavdevice-dev
 
   # Rename the old avc2ts binary
-  cp /home/pi/rpidatv/bin/avc2ts /home/pi/rpidatv/bin/avc2ts.old
+  # cp /home/pi/rpidatv/bin/avc2ts /home/pi/rpidatv/bin/avc2ts.old
 
   # Delete the old version of avc2ts (owned by root)
   sudo rm /home/pi/rpidatv/bin/avc2ts
@@ -214,6 +215,7 @@ fi
 
 # Make the new avc2ts
 cd /home/pi/avc2ts
+touch avc2ts.cpp
 make
 cp avc2ts ../rpidatv/bin/
 cd ..
