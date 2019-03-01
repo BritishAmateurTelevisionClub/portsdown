@@ -579,11 +579,14 @@ case "$MODE_OUTPUT" in
     if [ "$MODE_INPUT" == "ANALOGCAM" ]; then
       MODE_INPUT="ANALOGMPEG-2"
     fi
+    # If WEBCAMH264 is selected, temporarily select WEBCAMMPEG-2
+    if [ "$MODE_INPUT" == "WEBCAMH264" ]; then
+      MODE_INPUT="WEBCAMMPEG-2"
+    fi
     # If CARDH264 is selected, temporarily select CARDMPEG-2
     if [ "$MODE_INPUT" == "CARDH264" ]; then
       MODE_INPUT="CARDMPEG-2"
     fi
-
   ;;
 
   DIGITHIN)

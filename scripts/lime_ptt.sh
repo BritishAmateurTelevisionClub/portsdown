@@ -10,8 +10,17 @@ DELAY_TIME=7
 # PTT_BIT: 0 for Receive, 1 for (delayed) transmit = BCM 21 / Header pin 40
 PTT_BIT=21
 
-# Set PTT BIT as an output
+# SR_BIT0 - SR_BIT2.  Set all high to indicate Lime in use, not F-M board
+SR_BIT0=16
+SR_BIT1=26
+SR_BIT2=20
+
+# Set PTT BIT and SR Bits as outputs
 gpio -g mode $PTT_BIT out
+gpio -g mode $SR_BIT0 out
+gpio -g mode $SR_BIT1 out
+gpio -g mode $SR_BIT2 out
+
 
 ############### MAIN PROGRAM ###########
 
@@ -24,12 +33,20 @@ then
   # set PTT high
   gpio -g write $PTT_BIT 1
 
+  # set SR bits high
+  gpio -g write $SR_BIT0 1
+  gpio -g write $SR_BIT1 1
+  gpio -g write $SR_BIT2 1
+
   # Check again after 1 second, to make sure that PTT hadn't just been cancelled
   # If not running cancel PTT
   sleep 1
   if !(pgrep -x "limesdr_send" > /dev/null)
   then
     gpio -g write $PTT_BIT 0
+    gpio -g write $SR_BIT0 0
+    gpio -g write $SR_BIT1 0
+    gpio -g write $SR_BIT2 0
   fi
 fi
 
