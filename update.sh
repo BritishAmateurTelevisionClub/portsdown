@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Updated by davecrump 201811300
+# Updated by davecrump 201903030
 
 DisplayUpdateMsg() {
   # Delete any old update message image  201802040
@@ -102,8 +102,8 @@ if ! grep -q MountFlags=shared systemd-udevd.service; then
 fi
 
 # Check if Lime needs to be updated
-# Look for Commit 809c16c
-grep -Fxqs "809c16c" /home/pi/LimeSuite/commit_tag.txt
+# Look for Commit 42f752a
+grep -Fxqs "42f752a" /home/pi/LimeSuite/commit_tag.txt
 Lime_Update_Not_Required=$?
 
 if [ $Lime_Update_Not_Required != 0 ]; then
@@ -120,13 +120,14 @@ if [ $Lime_Update_Not_Required != 0 ]; then
   sudo rm -rf /usr/local/bin/LimeQuickTest >/dev/null 2>/dev/null
   sudo rm -rf /home/pi/LimeSuite >/dev/null 2>/dev/null
 
-  # Install LimeSuite 18.04 as at 14 Nov 18
-  # Commit 809c16ccb88fe1b714200777d1676b3f35757832
+  # Install LimeSuite 19.01 as at 12 Feb 19
+  # Commit 42f752af905a5b4464cdb95964e408a4682b4ffa
   cd /home/pi
-  wget https://github.com/myriadrf/LimeSuite/archive/809c16ccb88fe1b714200777d1676b3f35757832.zip -O master.zip
+  wget https://github.com/myriadrf/LimeSuite/archive/42f752af905a5b4464cdb95964e408a4682b4ffa.zip -O master.zip
   unzip -o master.zip
-  cp -f -r LimeSuite-809c16ccb88fe1b714200777d1676b3f35757832 LimeSuite
-  rm -rf LimeSuite-809c16ccb88fe1b714200777d1676b3f35757832
+  cp -f -r LimeSuite-42f752af905a5b4464cdb95964e408a4682b4ffa LimeSuite
+  rm -rf LimeSuite-42f752af905a5b4464cdb95964e408a4682b4ffa
+
   rm master.zip
 
   # Compile LimeSuite
@@ -145,7 +146,7 @@ if [ $Lime_Update_Not_Required != 0 ]; then
   sudo /home/pi/LimeSuite/udev-rules/install.sh
 
   # Record the LimeSuite Version
-  echo "809c16c" >/home/pi/LimeSuite/commit_tag.txt
+  echo "42f752a" >/home/pi/LimeSuite/commit_tag.txt
 fi
 
 # Delete old limetool and binary
@@ -292,10 +293,6 @@ if [ ! -f "/usr/bin/omxplayer" ]; then
   sudo apt-get -y install omxplayer
 fi
 
-# Delete Limetool
-rm -rf /home/pi/rpidatv/src/limetool
-rm -rf /home/pi/rpidatv/bin/limetx
-
 # Install limesdr_toolbox
 cd /home/pi/rpidatv/src/limesdr_toolbox
 cmake .
@@ -310,10 +307,16 @@ cd /home/pi/rpidatv/src/libdvbmod
 make dirmake
 make
 cd ../DvbTsToIQ
-touch DvbTsToIQ.cpp # To make sure that failed Dev updates get remade
-rm DvbTsToIQ.o
+
+# First compile the dvb2iq to be used for mpeg-2
+cp DvbTsToIQ2.cpp DvbTsToIQ.cpp
 make
-cp dvb2iq ../../bin/
+cp dvb2iq ../../bin/dvb2iq2
+
+# Now compile the dvb2iq to be used for H264
+cp DvbTsToIQ0.cpp DvbTsToIQ.cpp
+make
+cp dvb2iq ../../bin/dvb2iq
 
 # There is no step 7!
 
