@@ -1285,13 +1285,49 @@ do_check_FEC()
       89) do_set_DVBS_FEC ;;
       91) do_set_DVBS_FEC ;;
     esac
-  else
+  elif [ "$MODULATION" == "S2QPSK" ]; then
     case "$FEC" in
       1) do_set_DVBS2_FEC ;;
       2) do_set_DVBS2_FEC ;;
       3) do_set_DVBS2_FEC ;;
       5) do_set_DVBS2_FEC ;;
       7) do_set_DVBS2_FEC ;;
+    esac
+  elif [ "$MODULATION" == "8PSK" ]; then
+    case "$FEC" in
+      1) do_set_DVBS2_FEC ;;
+      2) do_set_DVBS2_FEC ;;
+      3) do_set_DVBS2_FEC ;;
+      5) do_set_DVBS2_FEC ;;
+      7) do_set_DVBS2_FEC ;;
+      14) do_set_DVBS2_FEC ;;
+      13) do_set_DVBS2_FEC ;;
+      12) do_set_DVBS2_FEC ;;
+    esac
+  elif [ "$MODULATION" == "16APSK" ]; then
+    case "$FEC" in
+      1) do_set_DVBS2_FEC ;;
+      2) do_set_DVBS2_FEC ;;
+      3) do_set_DVBS2_FEC ;;
+      5) do_set_DVBS2_FEC ;;
+      7) do_set_DVBS2_FEC ;;
+      14) do_set_DVBS2_FEC ;;
+      13) do_set_DVBS2_FEC ;;
+      12) do_set_DVBS2_FEC ;;
+      35) do_set_DVBS2_FEC ;;
+    esac
+  elif [ "$MODULATION" == "32APSK" ]; then
+    case "$FEC" in
+      1) do_set_DVBS2_FEC ;;
+      2) do_set_DVBS2_FEC ;;
+      3) do_set_DVBS2_FEC ;;
+      5) do_set_DVBS2_FEC ;;
+      7) do_set_DVBS2_FEC ;;
+      14) do_set_DVBS2_FEC ;;
+      13) do_set_DVBS2_FEC ;;
+      12) do_set_DVBS2_FEC ;;
+      35) do_set_DVBS2_FEC ;;
+      23) do_set_DVBS2_FEC ;;
     esac
   fi
 }
@@ -1349,7 +1385,7 @@ do_stop_transmit()
   sudo killall netcat >/dev/null 2>/dev/null
   sudo killall dvb2iq >/dev/null 2>/dev/null
   sudo killall dvb2iq2 >/dev/null 2>/dev/null
-  sudo killall limetx >/dev/null 2>/dev/null
+  sudo killall -9 limesdr_send >/dev/null 2>/dev/null
 
   # Then pause and make sure that avc2ts has really been stopped (needed at high SRs)
   sleep 0.1
@@ -1585,6 +1621,13 @@ do_autostart_setup()
     if [ $? -eq 0 ]; then
       set_config_var stream0 "$STREAM0" $PATH_STREAMPRESETS
     fi
+  fi
+
+  # If Keyed or Continuous stream selected, set up cron for 12-hourly reboot
+  if [[ "$chstartup" == "Keyed_Stream_boot" || "$chstartup" == "Cont_Stream_boot" ]]; then
+    sudo crontab /home/pi/rpidatv/scripts/configs/rptrcron
+  else
+    sudo crontab /home/pi/rpidatv/scripts/configs/blankcron
   fi
 }
 
