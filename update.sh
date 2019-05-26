@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Updated by davecrump 201904200
+# Updated by davecrump 201905090
 
 DisplayUpdateMsg() {
   # Delete any old update message image  201802040
@@ -38,39 +38,102 @@ reset
 
 printf "\nCommencing update.\n\n"
 
+cd /home/pi
+
+## Check which update to load. From M0DNY 201905090
+GIT_SRC_FILE=".portsdown_gitsrc"
+if [ -e ${GIT_SRC_FILE} ]; then
+  GIT_SRC=$(</home/pi/${GIT_SRC_FILE})
+else
+  GIT_SRC="BritishAmateurTelevisionClub"
+fi
+
+## If previous version was Dev (davecrump), load production by default
+if [ "$GIT_SRC" == "davecrump" ]; then
+  GIT_SRC="BritishAmateurTelevisionClub"
+fi
+
+if [ "$1" == "-d" ]; then
+  echo "Overriding to update to latest development version"
+  GIT_SRC="davecrump"
+fi
+
+if [ "$GIT_SRC" == "BritishAmateurTelevisionClub" ]; then
+  echo "Updating to latest Production Portsdown build";
+elif [ "$GIT_SRC" == "davecrump" ]; then
+  echo "Updating to latest development Portsdown build";
+else
+  echo "Updating to latest ${GIT_SRC} development Portsdown build";
+fi
+
 printf "Pausing Streamer or TX if running.\n\n"
 killall keyedstream >/dev/null 2>/dev/null
 sudo killall ffmpeg >/dev/null 2>/dev/null
 
 DisplayUpdateMsg "Step 3 of 10\nSaving Current Config\n\nXXX-------"
 
+PATHSCRIPT="/home/pi/rpidatv/scripts"
+PATHUBACKUP="/home/pi/user_backups"
+
 # Note previous version number
 cp -f -r /home/pi/rpidatv/scripts/installed_version.txt /home/pi/prev_installed_version.txt
 
-# Make safe copies of portsdown_config and portsdown_presets
-cp -f -r /home/pi/rpidatv/scripts/portsdown_config.txt /home/pi/portsdown_config.txt
-cp -f -r /home/pi/rpidatv/scripts/portsdown_presets.txt /home/pi/portsdown_presets.txt
+# Create a folder for user configs
+mkdir "$PATHUBACKUP" >/dev/null 2>/dev/null
+
+# Make a safe copy of portsdown_config.txt and portsdown_presets
+cp -f -r "$PATHSCRIPT"/portsdown_config.txt "$PATHUBACKUP"/portsdown_config.txt
+
+# Make a safe copy of portsdown_presets.txt
+cp -f -r "$PATHSCRIPT"/portsdown_presets.txt "$PATHUBACKUP"/portsdown_presets.txt
 
 # Make a safe copy of siggencal.txt
-cp -f -r /home/pi/rpidatv/src/siggen/siggencal.txt /home/pi/siggencal.txt
+cp -f -r /home/pi/rpidatv/src/siggen/siggencal.txt "$PATHUBACKUP"/siggencal.txt
 
 # Make a safe copy of siggenconfig.txt
-cp -f -r /home/pi/rpidatv/src/siggen/siggenconfig.txt /home/pi/siggenconfig.txt
+cp -f -r /home/pi/rpidatv/src/siggen/siggenconfig.txt "$PATHUBACKUP"/siggenconfig.txt
 
-# Make a safe copy of touchcal.txt if required
-cp -f -r /home/pi/rpidatv/scripts/touchcal.txt /home/pi/touchcal.txt
+# Make a safe copy of touchcal.txt
+cp -f -r /home/pi/rpidatv/scripts/touchcal.txt "$PATHUBACKUP"/touchcal.txt
 
-# Make a safe copy of rtl-fm_presets.txt if required
-cp -f -r /home/pi/rpidatv/scripts/rtl-fm_presets.txt /home/pi/rtl-fm_presets.txt
+# Make a safe copy of rtl-fm_presets.txt
+cp -f -r "$PATHSCRIPT"/rtl-fm_presets.txt "$PATHUBACKUP"/rtl-fm_presets.txt
 
-# Make a safe copy of portsdown_locators.txt if required
-cp -f -r /home/pi/rpidatv/scripts/portsdown_locators.txt /home/pi/portsdown_locators.txt
+# Make a safe copy of portsdown_locators.txt
+cp -f -r "$PATHSCRIPT"/portsdown_locators.txt "$PATHUBACKUP"/portsdown_locators.txt
 
-# Make a safe copy of rx_presets.txt if required
-cp -f -r /home/pi/rpidatv/scripts/rx_presets.txt /home/pi/rx_presets.txt
+# Make a safe copy of rx_presets.txt
+cp -f -r "$PATHSCRIPT"/rx_presets.txt "$PATHUBACKUP"/rx_presets.txt
 
-# Make a safe copy of the Stream Presets if required
-cp -f -r /home/pi/rpidatv/scripts/stream_presets.txt /home/pi/stream_presets.txt
+# Make a safe copy of the Stream Presets
+cp -f -r "$PATHSCRIPT"/stream_presets.txt "$PATHUBACKUP"/stream_presets.txt
+
+# Make a safe copy of the Jetson config
+cp -f -r "$PATHSCRIPT"/jetson_config.txt "$PATHUBACKUP"/jetson_config.txt
+
+# Make a safe copy of the User Button scripts
+cp -f -r "$PATHSCRIPT"/user_button1.sh "$PATHUBACKUP"/user_button1.sh
+cp -f -r "$PATHSCRIPT"/user_button2.sh "$PATHUBACKUP"/user_button2.sh
+cp -f -r "$PATHSCRIPT"/user_button3.sh "$PATHUBACKUP"/user_button3.sh
+cp -f -r "$PATHSCRIPT"/user_button4.sh "$PATHUBACKUP"/user_button4.sh
+cp -f -r "$PATHSCRIPT"/user_button5.sh "$PATHUBACKUP"/user_button5.sh
+
+# Make a safe copy of the transmit start and transmit stop scripts
+cp -f -r "$PATHSCRIPT"/TXstartextras.sh "$PATHUBACKUP"/TXstartextras.sh
+cp -f -r "$PATHSCRIPT"/TXstopextras.sh "$PATHUBACKUP"/TXstopextras.sh
+
+# Delete any old backups in the home directory
+if [ -e "/home/pi/portsdown_config.txt" ]; then
+  rm /home/pi/portsdown_config.txt
+  rm /home/pi/portsdown_presets.txt
+  rm /home/pi/siggencal.txt
+  rm /home/pi/touchcal.txt
+  rm /home/pi/rtl-fm_presets.txt
+  rm /home/pi/portsdown_locators.txt
+  rm /home/pi/rx_presets.txt
+  rm /home/pi/stream_presets.txt
+  rm /home/pi/jetson_config.txt
+fi
 
 # Delete any old update message image  201802040
 rm /home/pi/tmp/update.jpg >/dev/null 2>/dev/null
@@ -94,6 +157,9 @@ sudo apt-get -y dist-upgrade # Upgrade all the installed packages to their lates
 # --------- Install the Random Number Generator ------
 
 sudo apt-get -y install rng-tools # This makes sure that there is enough entropy for wget
+
+# --------- Install sshpass ------
+sudo apt-get -y install sshpass  # For controlling the Jetson Nano
 
 # Enable USB Storage automount in Stretch (only) 20180704
 cd /lib/systemd/system/
@@ -159,17 +225,20 @@ DisplayUpdateMsg "Step 5 of 10\nDownloading Portsdown SW\n\nXXXXX-----"
 
 cd /home/pi
 
+# Download selected source of rpidatv
+wget https://github.com/${GIT_SRC}/portsdown/archive/master.zip -O master.zip
+
 # Check which source to download.  Default is production
 # option -p or null is the production load
 # option -d is development from davecrump
 
-if [ "$1" == "-d" ]; then
-  echo "Installing development load"
-  wget https://github.com/davecrump/portsdown/archive/master.zip -O master.zip
-else
-  echo "Installing BATC Production load"
-  wget https://github.com/BritishAmateurTelevisionClub/portsdown/archive/master.zip -O master.zip
-fi
+#if [ "$1" == "-d" ]; then
+#  echo "Installing development load"
+#  wget https://github.com/davecrump/portsdown/archive/master.zip -O master.zip
+#else
+#  echo "Installing BATC Production load"
+#  wget https://github.com/BritishAmateurTelevisionClub/portsdown/archive/master.zip -O master.zip
+#fi
 
 # Unzip and overwrite where we need to
 unzip -o master.zip
@@ -192,15 +261,18 @@ else
   echo "avc2ts dependencies required and will be installed after avc2ts"
 fi
 
+# Download selected source of rpidatv
+wget https://github.com/${GIT_SRC}/avc2ts/archive/master.zip
+
 # Check which avc2ts to download.  Default is production
 # option d is development from davecrump
-if [ "$1" == "-d" ]; then
-  echo "Installing development avc2ts"
-  wget https://github.com/davecrump/avc2ts/archive/master.zip
-else
-  echo "Installing BATC Production avc2ts"
-  wget https://github.com/BritishAmateurTelevisionClub/avc2ts/archive/master.zip
-fi
+#if [ "$1" == "-d" ]; then
+#  echo "Installing development avc2ts"
+#  wget https://github.com/davecrump/avc2ts/archive/master.zip
+#else
+#  echo "Installing BATC Production avc2ts"
+#  wget https://github.com/BritishAmateurTelevisionClub/avc2ts/archive/master.zip
+#fi
 
 # Unzip the avc2ts software
 unzip -o master.zip
@@ -358,15 +430,14 @@ fi
 
 DisplayUpdateMsg "Step 8 of 10\nRestoring Config\n\nXXXXXXXX--"
 
-# Restore portsdown_config.txt
-cp -f -r /home/pi/portsdown_config.txt /home/pi/rpidatv/scripts/portsdown_config.txt
-cp -f -r /home/pi/portsdown_presets.txt /home/pi/rpidatv/scripts/portsdown_presets.txt
-rm -f /home/pi/portsdown_config.txt
-rm -f /home/pi/portsdown_presets.txt
+# Restore portsdown_config.txt and portsdown_presets.txt
+cp -f -r "$PATHUBACKUP"/portsdown_config.txt "$PATHSCRIPT"/portsdown_config.txt
+cp -f -r "$PATHUBACKUP"/portsdown_presets.txt "$PATHSCRIPT"/portsdown_presets.txt
 
+# Update config file with modulation and limegain
 if ! grep -q modulation /home/pi/rpidatv/scripts/portsdown_config.txt; then
   # File needs updating
-  printf "Adding new entries to user's portsdown_config.txt\n"
+  printf "Adding modulation and limegain to user's portsdown_config.txt\n"
   # Delete any blank lines
   sed -i -e '/^$/d' /home/pi/rpidatv/scripts/portsdown_config.txt
   # Add the 2 new entries and a new line 
@@ -375,9 +446,34 @@ if ! grep -q modulation /home/pi/rpidatv/scripts/portsdown_config.txt; then
   echo "" >> /home/pi/rpidatv/scripts/portsdown_config.txt
 fi
 
+# Update config file with pilots and frames          201905090
+if ! grep -q frames /home/pi/rpidatv/scripts/portsdown_config.txt; then
+  # File needs updating
+  printf "Adding pilots and frames to user's portsdown_config.txt\n"
+  # Delete any blank lines
+  sed -i -e '/^$/d' /home/pi/rpidatv/scripts/portsdown_config.txt
+  # Add the 2 new entries and a new line 
+  echo "pilots=off" >> /home/pi/rpidatv/scripts/portsdown_config.txt
+  echo "frames=long" >> /home/pi/rpidatv/scripts/portsdown_config.txt
+  echo "" >> /home/pi/rpidatv/scripts/portsdown_config.txt
+fi
+
+# Update config file with format and encoding          201905090
+if ! grep -q encoding /home/pi/rpidatv/scripts/portsdown_config.txt; then
+  # File needs updating
+  printf "Adding format and encoding to user's portsdown_config.txt\n"
+  # Delete any blank lines
+  sed -i -e '/^$/d' /home/pi/rpidatv/scripts/portsdown_config.txt
+  # Add the 2 new entries and a new line 
+  echo "format=4:3" >> /home/pi/rpidatv/scripts/portsdown_config.txt
+  echo "encoding=H264" >> /home/pi/rpidatv/scripts/portsdown_config.txt
+  echo "" >> /home/pi/rpidatv/scripts/portsdown_config.txt
+fi
+
+# Update presets file with limegains for each band
 if ! grep -q d1limegain /home/pi/rpidatv/scripts/portsdown_presets.txt; then
   # File needs updating
-  printf "Adding new entries to user's portsdown_presets.txt\n"
+  printf "Adding band limegains to user's portsdown_presets.txt\n"
   # Delete any blank lines
   sed -i -e '/^$/d' /home/pi/rpidatv/scripts/portsdown_presets.txt
   # Add the 9 new entries and a new line 
@@ -458,32 +554,28 @@ make
 cp -f /home/pi/rpidatv/src/xy/xy /home/pi/rpidatv/bin/xy
 cd /home/pi
 
+# Install the components for Lime Grove
+cp -r /home/pi/rpidatv/scripts/configs/dvbsdr/ /home/pi/dvbsdr/
+
 # Always auto-logon and run .bashrc (and hence startup.sh) (20180729)
 sudo ln -fs /etc/systemd/system/autologin@.service\
  /etc/systemd/system/getty.target.wants/getty@tty1.service
 
-# Restore the user's original siggencal.txt if required
-if [ -f "/home/pi/siggencal.txt" ]; then
-  cp -f -r /home/pi/siggencal.txt /home/pi/rpidatv/src/siggen/siggencal.txt
-fi
+# Restore the user's original siggencal.txt
+cp -f -r "$PATHUBACKUP"/siggencal.txt /home/pi/rpidatv/src/siggen/siggencal.txt
 
-# Restore the user's original siggenconfig.txt if required
-if [ -f "/home/pi/siggenconfig.txt" ]; then
-  cp -f -r /home/pi/siggenconfig.txt /home/pi/rpidatv/src/siggen/siggenconfig.txt
-fi
+# Restore the user's original siggenconfig.txt
+cp -f -r "$PATHUBACKUP"/siggenconfig.txt /home/pi/rpidatv/src/siggen/siggenconfig.txt
 
-# Restore the user's original touchcal.txt if required (201711030)
-if [ -f "/home/pi/touchcal.txt" ]; then
-  cp -f -r /home/pi/touchcal.txt /home/pi/rpidatv/scripts/touchcal.txt
-fi
+# Restore the user's original touchcal.txt
+cp -f -r "$PATHUBACKUP"/touchcal.txt /home/pi/rpidatv/scripts/touchcal.txt
 
-# Restore the user's original rtl-fm_presets.txt if required
-if [ -f "/home/pi/rtl-fm_presets.txt" ]; then
-  cp -f -r /home/pi/rtl-fm_presets.txt /home/pi/rpidatv/scripts/rtl-fm_presets.txt
-fi
+# Restore the user's rtl-fm_presets.txt
+cp -f -r "$PATHUBACKUP"/rtl-fm_presets.txt "$PATHSCRIPT"/rtl-fm_presets.txt
+
 if ! grep -q r0gain /home/pi/rpidatv/scripts/rtl-fm_presets.txt; then
   # File needs updating
-  printf "Adding new entries to user's rtl-fm_presets.txt\n"
+  printf "Adding preset gains to user's rtl-fm_presets.txt\n"
   # Delete any blank lines
   sed -i -e '/^$/d' /home/pi/rpidatv/scripts/rtl-fm_presets.txt
   # Add the 9 new entries and a new line 
@@ -500,26 +592,19 @@ if ! grep -q r0gain /home/pi/rpidatv/scripts/rtl-fm_presets.txt; then
   echo "" >> /home/pi/rpidatv/scripts/rtl-fm_presets.txt
 fi
 
-# Restore the user's original portsdown_locators.txt if required
-if [ -f "/home/pi/portsdown_locators.txt" ]; then
-  cp -f -r /home/pi/portsdown_locators.txt /home/pi/rpidatv/scripts/portsdown_locators.txt
-else
-  # Over-write the default locator with the user's locator
-  source /home/pi/rpidatv/scripts/copy_locator.sh
-fi
+# Restore the user's original portsdown_locators.txt
+cp -f -r "$PATHUBACKUP"/portsdown_locators.txt "$PATHSCRIPT"/portsdown_locators.txt
 
-# Restore the user's original rx_presets.txt if required
-if [ -f "/home/pi/rx_presets.txt" ]; then
-  cp -f -r /home/pi/rx_presets.txt /home/pi/rpidatv/scripts/rx_presets.txt
-fi
+# Restore the user's original rx_presets.txt
+cp -f -r "$PATHUBACKUP"/rx_presets.txt "$PATHSCRIPT"/rx_presets.txt
 
-# Restore the user's original stream presets if required
-if [ -f "/home/pi/stream_presets.txt" ]; then
-  cp -f -r /home/pi/stream_presets.txt /home/pi/rpidatv/scripts/stream_presets.txt
-fi
+# Restore the user's original stream presets
+cp -f -r "$PATHUBACKUP"/stream_presets.txt "$PATHSCRIPT"/stream_presets.txt 
+
+# Update Stream presets if required
 if ! grep -q streamurl1 /home/pi/rpidatv/scripts/stream_presets.txt; then
   # File needs updating
-  printf "Adding new entries to user's stream_presets.txt\n"
+  printf "Adding treamurls and streamkeys to user's stream_presets.txt\n"
   # Delete any blank lines
   sed -i -e '/^$/d' /home/pi/rpidatv/scripts/stream_presets.txt
   # Add the 9 new entries and a new line 
@@ -546,6 +631,20 @@ fi
 if grep -q "startup=Cont_Stream_boot" /home/pi/rpidatv/scripts/portsdown_config.txt; then
   sudo crontab /home/pi/rpidatv/scripts/configs/rptrcron
 fi
+
+# Restore the user's original Jetson configuration
+cp -f -r "$PATHUBACKUP"/jetson_config.txt "$PATHSCRIPT"/jetson_config.txt
+
+# Restore the user's original User Button scripts
+cp -f -r "$PATHUBACKUP"/user_button1.sh "$PATHSCRIPT"/user_button1.sh
+cp -f -r "$PATHUBACKUP"/user_button2.sh "$PATHSCRIPT"/user_button2.sh
+cp -f -r "$PATHUBACKUP"/user_button3.sh "$PATHSCRIPT"/user_button3.sh
+cp -f -r "$PATHUBACKUP"/user_button4.sh "$PATHSCRIPT"/user_button4.sh
+cp -f -r "$PATHUBACKUP"/user_button5.sh "$PATHSCRIPT"/user_button5.sh
+
+# Restore the user's original transmit start and transmit stop scripts
+cp -f -r "$PATHUBACKUP"/TXstartextras.sh "$PATHSCRIPT"/TXstartextras.sh
+cp -f -r "$PATHUBACKUP"/TXstopextras.sh "$PATHSCRIPT"/TXstopextras.sh
 
 # If user is upgrading a keyed streamer, add the cron job for 12-hourly reboot
 if grep -q "startup=Keyed_Stream_boot" /home/pi/rpidatv/scripts/portsdown_config.txt; then
@@ -574,6 +673,9 @@ rm -rf /home/pi/rpidatv/scripts/installed_version.txt
 cp /home/pi/rpidatv/scripts/latest_version.txt /home/pi/rpidatv/scripts/installed_version.txt
 cp -f -r /home/pi/prev_installed_version.txt /home/pi/rpidatv/scripts/prev_installed_version.txt
 rm -rf /home/pi/prev_installed_version.txt
+
+# Save (overwrite) the git source used
+echo "${GIT_SRC}" >> /home/pi/${GIT_SRC_FILE}
 
 # Reboot
 DisplayRebootMsg "Step 10 of 10\nRebooting\n\nUpdate Complete"

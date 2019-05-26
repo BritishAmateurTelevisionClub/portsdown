@@ -1,13 +1,15 @@
 #! /bin/bash
-# set -x #Uncomment for testing
 
-# Version 201903030
+# set -x # Uncomment for testing
+
+# Version 201905090
 
 ############# SET GLOBAL VARIABLES ####################
 
 PATHRPI="/home/pi/rpidatv/bin"
 PATHSCRIPT="/home/pi/rpidatv/scripts"
 PCONFIGFILE="/home/pi/rpidatv/scripts/portsdown_config.txt"
+JCONFIGFILE="/home/pi/rpidatv/scripts/jetson_config.txt"
 
 ############# MAKE SURE THAT WE KNOW WHERE WE ARE ##################
 
@@ -673,6 +675,10 @@ case "$MODE_OUTPUT" in
     LIME_GAIN=$(get_config_var limegain $PCONFIGFILE)
     $PATHSCRIPT"/ctlfilter.sh"
   ;;
+
+  "JLIME" | "JEXPRESS")
+    LIME_GAIN=$(get_config_var limegain $PCONFIGFILE)
+  ;;
 esac
 
 OUTPUT_QPSK="videots"
@@ -730,7 +736,7 @@ else
   fi
 
   # Reduce frame rate at low bit rates
-  if [ "$BITRATE_VIDEO" -lt 300000 ]; then
+  if [ "$BITRATE_VIDEO" -lt 150000 ]; then  # was 300000
     VIDEO_FPS=15
   else
     # Switch to 30 fps if required
@@ -744,8 +750,10 @@ fi
 
 # Set H264 Audio Settings
 ARECORD_BUF=5000     # arecord buffer in us
+
 # Input sampling rate to arecord is adjusted depending on source
 BITRATE_AUDIO=32000  # aac encoder output
+
 # Set h264 aac audio bitrate for avc2ts
 AUDIO_MARGIN=60000   # headroom allowed in TS
 
@@ -762,7 +770,7 @@ IDRPERIOD=100
 
 # Set the SDR Up-sampling rate and correct gain for Lime
 case "$MODE_OUTPUT" in
-  "LIMEMINI" | "LIMEUSB")
+  "LIMEMINI" | "LIMEUSB" | "JLIME" | "JEXPRESS")
     if [ "$SYMBOLRATE_K" -lt 990 ] ; then
       UPSAMPLE=2
       LIME_GAINF=`echo - | awk '{print '$LIME_GAIN' / 100}'`
@@ -785,16 +793,37 @@ case "$MODE_OUTPUT" in
       LIME_GAINF=`echo - | awk '{print ( '$LIME_GAIN' - 6 ) / 100}'`
     fi
 
+    # Turn pilots on if required
+    PILOT=$(get_config_var pilots $PCONFIGFILE)
+    if [ "$PILOT" == "on" ]; then
+      PILOTS="-p"
+    else
+      PILOTS=""
+    fi
+
+    # Select Short Frames if required
+    FRAME=$(get_config_var frames $PCONFIGFILE)
+    if [ "$FRAME" == "short" ]; then
+      FRAMES="-v"
+    else
+      FRAMES=""
+    fi
+
     # Calculate the exact TS Bitrate for Lime
     NEW_BITRATE_TS="$($PATHRPI"/dvb2iq" -s $SYMBOLRATE_K -f $FECNUM"/"$FECDEN \
-                      -d -r $UPSAMPLE -m $MODTYPE -c $CONSTLN )"
+                      -d -r $UPSAMPLE -m $MODTYPE -c $CONSTLN $PILOTS $FRAMES )"
 
     echo
     echo Old Bitrate $BITRATE_TS
     echo New Bitrate $NEW_BITRATE_TS
-    echo
 
-   BITRATE_TS=$NEW_BITRATE_TS+1000
+    # Fudge the bitrate for an improvement
+    let BITRATE_TS=$NEW_BITRATE_TS #+1000
+    let BITRATE_VIDEO=($BITRATE_TS-12000)*650/1000
+
+    echo Corrected Bitrate $BITRATE_TS
+    echo Video Bitrate $BITRATE_VIDEO
+    echo
   ;;
 esac
 
@@ -802,11 +831,12 @@ esac
 LIMESENDBUF=10000
 
 # Clean up before starting fifos
-sudo rm videoes
-sudo rm videots
-sudo rm netfifo
-sudo rm audioin.wav
+sudo rm videoes >/dev/null 2>/dev/null
+sudo rm videots >/dev/null 2>/dev/null
+sudo rm netfifo >/dev/null 2>/dev/null
+sudo rm audioin.wav >/dev/null 2>/dev/null
 
+# Create the fifos
 mkfifo videoes
 mkfifo videots
 mkfifo netfifo
@@ -854,7 +884,7 @@ case "$MODE_INPUT" in
       "LIMEMINI" | "LIMEUSB")
 
         sudo $PATHRPI"/dvb2iq" -i videots -s $SYMBOLRATE_K -f $FECNUM"/"$FECDEN \
-          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN \
+          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN $PILOTS $FRAMES \
            | sudo $PATHRPI"/limesdr_send" -f $FREQ_OUTPUTHZ -b 2.5e6 -s $SYMBOLRATE \
            -g $LIME_GAINF -p 0.05 -r $UPSAMPLE -l $LIMESENDBUF -e $BAND_GPIO &
 
@@ -946,7 +976,7 @@ fi
       ;;
       "LIMEMINI" | "LIMEUSB")
         $PATHRPI"/dvb2iq2" -i videots -s $SYMBOLRATE_K -f $FECNUM"/"$FECDEN \
-          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN \
+          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN $PILOTS $FRAMES \
            | sudo $PATHRPI"/limesdr_send" -f $FREQ_OUTPUTHZ -b 2.5e6 -s $SYMBOLRATE \
            -g $LIME_GAINF -p 0.05 -r $UPSAMPLE -l $LIMESENDBUF -e $BAND_GPIO &
       ;;
@@ -1072,7 +1102,7 @@ fi
       ;;
       "LIMEMINI" | "LIMEUSB")
         $PATHRPI"/dvb2iq" -i videots -s $SYMBOLRATE_K -f $FECNUM"/"$FECDEN \
-          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN \
+          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN $PILOTS $FRAMES \
            | sudo $PATHRPI"/limesdr_send" -f $FREQ_OUTPUTHZ -b 2.5e6 -s $SYMBOLRATE \
            -g $LIME_GAINF -p 0.05 -r $UPSAMPLE -l $LIMESENDBUF -e $BAND_GPIO &
 
@@ -1137,7 +1167,7 @@ fi
       ;;
       "LIMEMINI" | "LIMEUSB")
         $PATHRPI"/dvb2iq" -i videots -s $SYMBOLRATE_K -f $FECNUM"/"$FECDEN \
-          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN \
+          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN $PILOTS $FRAMES \
            | sudo $PATHRPI"/limesdr_send" -f $FREQ_OUTPUTHZ -b 2.5e6 -s $SYMBOLRATE \
            -g $LIME_GAINF -p 0.05 -r $UPSAMPLE -l $LIMESENDBUF -e $BAND_GPIO &
 
@@ -1191,7 +1221,6 @@ fi
          v4l2-ctl --device="$VID_WEBCAM" --set-fmt-video=width=800,height=600,pixelformat=0
       fi
       ANALOGCAMNAME=$VID_WEBCAM
-      #ANALOGCAMNAME="/dev/video2"
     fi
 
     # If PiCam is present unload driver   
@@ -1215,7 +1244,7 @@ fi
       ;;
       "LIMEMINI" | "LIMEUSB")
         $PATHRPI"/dvb2iq" -i videots -s $SYMBOLRATE_K -f $FECNUM"/"$FECDEN \
-          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN \
+          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN $PILOTS $FRAMES \
            | sudo $PATHRPI"/limesdr_send" -f $FREQ_OUTPUTHZ -b 2.5e6 -s $SYMBOLRATE \
            -g $LIME_GAINF -p 0.05 -r $UPSAMPLE -l $LIMESENDBUF -e $BAND_GPIO &
 
@@ -1237,6 +1266,7 @@ fi
       > /dev/null &
     else
       # ******************************* H264 VIDEO WITH AUDIO ************************************
+
       arecord -f S16_LE -r $AUDIO_SAMPLE -c 2 -B $ARECORD_BUF -D plughw:$AUDIO_CARD_NUMBER,0 > audioin.wav &
 
       let BITRATE_VIDEO=$BITRATE_VIDEO-$AUDIO_MARGIN  # Make room for audio
@@ -1312,7 +1342,7 @@ fi
       ;;
       "LIMEMINI" | "LIMEUSB")
         $PATHRPI"/dvb2iq2" -i videots -s $SYMBOLRATE_K -f $FECNUM"/"$FECDEN \
-          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN \
+          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN $PILOTS $FRAMES \
            |buffer| sudo $PATHRPI"/limesdr_send" -f $FREQ_OUTPUTHZ -b 2.5e6 -s $SYMBOLRATE \
            -g $LIME_GAINF -p 0.05 -r $UPSAMPLE -l $LIMESENDBUF -e $BAND_GPIO &
 
@@ -1365,7 +1395,7 @@ fi
       ;;
       "LIMEMINI" | "LIMEUSB")
         $PATHRPI"/dvb2iq" -i videots -s $SYMBOLRATE_K -f $FECNUM"/"$FECDEN \
-          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN \
+          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN $PILOTS $FRAMES \
            | sudo $PATHRPI"/limesdr_send" -f $FREQ_OUTPUTHZ -b 2.5e6 -s $SYMBOLRATE \
            -g $LIME_GAINF -p 0.05 -r $UPSAMPLE -l $LIMESENDBUF -e $BAND_GPIO &
       ;;
@@ -1392,7 +1422,7 @@ fi
       ;;
       "LIMEMINI" | "LIMEUSB")
         $PATHRPI"/dvb2iq" -i $TSVIDEOFILE -s $SYMBOLRATE_K -f $FECNUM"/"$FECDEN \
-          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN \
+          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN $PILOTS $FRAMES \
            | sudo $PATHRPI"/limesdr_send" -f $FREQ_OUTPUTHZ -b 2.5e6 -s $SYMBOLRATE \
            -g $LIME_GAINF -p 0.05 -r $UPSAMPLE -l $LIMESENDBUF -e $BAND_GPIO &
       ;;
@@ -1540,7 +1570,7 @@ fi
       ;;
       "LIMEMINI" | "LIMEUSB")
         $PATHRPI"/dvb2iq2" -i videots -s $SYMBOLRATE_K -f $FECNUM"/"$FECDEN \
-          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN \
+          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN $PILOTS $FRAMES \
            | sudo $PATHRPI"/limesdr_send" -f $FREQ_OUTPUTHZ -b 2.5e6 -s $SYMBOLRATE \
            -g $LIME_GAINF -p 0.05 -r $UPSAMPLE -l $LIMESENDBUF -e $BAND_GPIO &
       ;;
@@ -1738,7 +1768,7 @@ fi
       ;;
       "LIMEMINI" | "LIMEUSB")
         $PATHRPI"/dvb2iq2" -i videots -s $SYMBOLRATE_K -f $FECNUM"/"$FECDEN \
-          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN \
+          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN $PILOTS $FRAMES \
            | sudo $PATHRPI"/limesdr_send" -f $FREQ_OUTPUTHZ -b 2.5e6 -s $SYMBOLRATE \
            -g $LIME_GAINF -p 0.05 -r $UPSAMPLE -l $LIMESENDBUF -e $BAND_GPIO &
       ;;
@@ -1858,7 +1888,7 @@ fi
       ;;
       "LIMEMINI" | "LIMEUSB")
         $PATHRPI"/dvb2iq" -i videots -s $SYMBOLRATE_K -f $FECNUM"/"$FECDEN \
-          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN \
+          -r $UPSAMPLE -m $MODTYPE -c $CONSTLN $PILOTS $FRAMES \
            | sudo $PATHRPI"/limesdr_send" -f $FREQ_OUTPUTHZ -b 2.5e6 -s $SYMBOLRATE \
            -g $LIME_GAINF -p 0.05 -r $UPSAMPLE -l $LIMESENDBUF -e $BAND_GPIO &
       ;;
@@ -1898,6 +1928,119 @@ fi
 
   ;;
 esac
+
+# None of these input modes were valid for the Jetson, so we can put the Jetson code here
+
+# First sort out the environment variables
+case "$MODE_OUTPUT" in
+"JLIME" | "JEXPRESS" )
+  JETSONIP=$(get_config_var jetsonip $JCONFIGFILE)
+  JETSONUSER=$(get_config_var jetsonuser $JCONFIGFILE)
+  JETSONPW=$(get_config_var jetsonpw $JCONFIGFILE)
+  LKVUDP=$(get_config_var lkvudp $JCONFIGFILE)
+  LKVPORT=$(get_config_var lkvport $JCONFIGFILE)
+  FORMAT=$(get_config_var format $PCONFIGFILE)
+  ENCODING=$(get_config_var encoding $PCONFIGFILE)
+  CMDFILE="/home/pi/tmp/jetson_command.txt"
+
+  # Set the video format
+  if [ "$FORMAT" == "1080p" ]; then
+    VIDEO_WIDTH=1920
+    VIDEO_HEIGHT=1080
+  elif [ "$FORMAT" == "720p" ]; then
+    VIDEO_WIDTH=1280
+    VIDEO_HEIGHT=720
+  elif [ "$FORMAT" == "16:9" ]; then
+    VIDEO_WIDTH=720
+    VIDEO_HEIGHT=405
+  else  # SD
+    if [ "$BITRATE_VIDEO" -lt 75000 ]; then
+      VIDEO_WIDTH=160
+      VIDEO_HEIGHT=140
+    else
+      if [ "$BITRATE_VIDEO" -lt 150000 ]; then
+        VIDEO_WIDTH=352
+        VIDEO_HEIGHT=288
+      else
+        VIDEO_WIDTH=720
+        VIDEO_HEIGHT=576
+      fi
+    fi
+  fi
+
+  # Calculate the exact TS Bitrate for Lime
+  BITRATE_TS="$($PATHRPI"/dvb2iq" -s $SYMBOLRATE_K -f $FECNUM"/"$FECDEN \
+    -d -r $UPSAMPLE -m $MODTYPE -c $CONSTLN $PILOTS $FRAMES )"
+
+  AUDIO_BITRATE=20000
+  let TS_AUDIO_BITRATE=AUDIO_BITRATE*14/10
+  # let VIDEOBITRATE=(BITRATE_TS-12000-TS_AUDIO_BITRATE)*650/1000    # Evariste
+  let VIDEOBITRATE=(BITRATE_TS-12000-TS_AUDIO_BITRATE)*600/1000  # Mike
+  let VIDEOPEAKBITRATE=VIDEOBITRATE*110/100
+
+  echo
+  echo BITRATETS $BITRATE_TS
+  echo VIDEOBITRATE $VIDEOBITRATE
+  echo VIDEOPEAKBITRATE $VIDEOPEAKBITRATE
+  echo AUDIO_BITRATE $AUDIO_BITRATE
+  echo TS_AUDIO_BITRATE $TS_AUDIO_BITRATE
+  echo
+
+;;
+esac
+
+# Now send the correct commands to the Jetson
+case "$MODE_OUTPUT" in
+"JLIME")
+  case "$ENCODING" in
+  "H265")
+    case "$MODE_INPUT" in
+    "JHDMI")
+      # Write the assembled Jetson command to a temp file
+      /bin/cat <<EOM >$CMDFILE
+      (sshpass -p $JETSONPW ssh -o StrictHostKeyChecking=no $JETSONUSER@$JETSONIP 'bash -s' <<'ENDSSH' 
+      cd ~/dvbsdr/scripts
+      gst-launch-1.0 udpsrc address=$LKVUDP port=$LKVPORT \
+        '!' video/mpegts '!' tsdemux name=dem dem. '!' queue '!' h264parse '!' omxh264dec \
+        '!' nvvidconv \
+        '!' 'video/x-raw(memory:NVMM), width=(int)$VIDEO_WIDTH, height=(int)$VIDEO_HEIGHT, format=(string)I420' \
+        '!' omxh265enc control-rate=2 bitrate=$VIDEOBITRATE peak-bitrate=$VIDEOPEAKBITRATE preset-level=3 iframeinterval=100 \
+        '!' 'video/x-h265,stream-format=(string)byte-stream' '!' mux. dem. '!' queue \
+        '!' mpegaudioparse '!' avdec_mp2float '!' audioconvert '!' audioresample \
+        '!' 'audio/x-raw, format=S16LE, layout=interleaved, rate=48000, channels=1' '!' voaacenc bitrate=20000 \
+        '!' queue '!' mux. mpegtsmux alignment=7 name=mux '!' fdsink \
+      | ffmpeg -i - -ss 8 \
+        -c:v copy -max_delay 200000 -muxrate $BITRATE_TS \
+        -c:a copy -f mpegts \
+        -metadata service_provider="$CALL" -metadata service_name="$CALL" \
+        -mpegts_pmt_start_pid $PIDPMT -streamid 0:"$PIDVIDEO" -streamid 1:"$PIDAUDIO" - \
+      | ../bin/limesdr_dvb -s "$SYMBOLRATE_K"000 -f $FECNUM/$FECDEN -r $UPSAMPLE -m $MODTYPE -c $CONSTLN $PILOTS $FRAMES \
+        -t "$FREQ_OUTPUT"e6 -g $LIME_GAINF -q 1
+ENDSSH
+      ) &
+EOM
+    ;;
+    esac
+  ;;
+  esac
+  # Run the Command on the Jetson
+  source "$CMDFILE"
+
+  # Turn the PTT on after a 15 second delay
+  /home/pi/rpidatv/scripts/jetson_lime_ptt.sh &
+;;
+
+"JEXPRESS")
+
+
+
+;;
+
+  *)
+    exit
+;;
+esac
+
 
 # ============================================ END =============================================================
 

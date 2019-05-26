@@ -1,6 +1,25 @@
 #!/bin/bash
 
-# Stretch Version by davecrump on 201903030
+# Stretch Version by davecrump on 201905090
+
+# Check which source needs to be loaded # From M0DNY 201905090
+GIT_SRC="BritishAmateurTelevisionClub"
+GIT_SRC_FILE=".portsdown_gitsrc"
+
+if [ "$1" == "-d" ]; then
+  GIT_SRC="davecrump";
+  echo "Installing development version";
+elif [ "$1" == "-u" -a ! -z "$2" ]; then
+  GIT_SRC="$2"
+  echo "WARNING: Installing ${GIT_SRC} development version, press enter to continue or 'q' to quit."
+  read -n1 -r -s key;
+  if [[ $key == q ]]; then
+    exit 1;
+  fi
+  echo "ok!";
+else
+  echo "Installing BATC Production portsdown.";
+fi
 
 # Update the package manager
 sudo dpkg --configure -a
@@ -23,6 +42,7 @@ sudo apt-get -y install fbi netcat imagemagick rng-tools
 sudo apt-get -y install libvdpau-dev libva-dev libxcb-shape0  # For latest ffmpeg build
 sudo apt-get -y install python-pip pandoc python-numpy pandoc python-pygame gdebi-core # 20180101 FreqShow
 sudo apt-get -y install libsqlite3-dev libi2c-dev # 201811300 Lime
+sudo apt-get -y install sshpass  # 201905090 For Jetson Nano
 
 sudo pip install pyrtlsdr  #20180101 FreqShow
 
@@ -61,16 +81,18 @@ sudo /home/pi/LimeSuite/udev-rules/install.sh
 echo "42f752a" >/home/pi/LimeSuite/commit_tag.txt
 cd /home/pi
 
+# Download the previously selected version of rpidatv
+wget https://github.com/${GIT_SRC}/portsdown/archive/master.zip
+
 # Check which rpidatv source to download.  Default is production
 # option d is development from davecrump
-if [ "$1" == "-d" ]; then
-  echo "Installing development load"
-  wget https://github.com/davecrump/portsdown/archive/master.zip
-
-else
-  echo "Installing BATC Production load"
-  wget https://github.com/BritishAmateurTelevisionClub/portsdown/archive/master.zip
-fi
+#if [ "$1" == "-d" ]; then
+#  echo "Installing development load"
+#  wget https://github.com/davecrump/portsdown/archive/master.zip
+#else
+#  echo "Installing BATC Production load"
+#  wget https://github.com/BritishAmateurTelevisionClub/portsdown/archive/master.zip
+#fi
 
 # Unzip the rpidatv software and copy to the Pi
 unzip -o master.zip
@@ -78,15 +100,18 @@ mv portsdown-master rpidatv
 rm master.zip
 cd /home/pi
 
+# Download the previously selected version of avc2ts
+wget https://github.com/${GIT_SRC}/avc2ts/archive/master.zip
+
 # Check which avc2ts to download.  Default is production
 # option d is development from davecrump
-if [ "$1" == "-d" ]; then
-  echo "Installing development avc2ts"
-  wget https://github.com/davecrump/avc2ts/archive/master.zip
-else
-  echo "Installing BATC Production avc2ts"
-  wget https://github.com/BritishAmateurTelevisionClub/avc2ts/archive/master.zip
-fi
+#if [ "$1" == "-d" ]; then
+#  echo "Installing development avc2ts"
+#  wget https://github.com/davecrump/avc2ts/archive/master.zip
+#else
+#  echo "Installing BATC Production avc2ts"
+#  wget https://github.com/BritishAmateurTelevisionClub/avc2ts/archive/master.zip
+#fi
 
 # Unzip the avc2ts software and copy to the Pi
 unzip -o master.zip
@@ -349,6 +374,9 @@ make
 cp -f /home/pi/rpidatv/src/xy/xy /home/pi/rpidatv/bin/xy
 cd /home/pi
 
+# Copy the components to support Lime Grove
+cp -r /home/pi/rpidatv/scripts/configs/dvbsdr/ /home/pi/dvbsdr/
+
 # Install FreqShow (see https://learn.adafruit.com/freq-show-raspberry-pi-rtl-sdr-scanner/overview)
 
 # Remove the existing version of libsdl1.2debian
@@ -387,6 +415,9 @@ then
 else
   echo "Completed English Install"
 fi
+
+# Save git source used
+echo "${GIT_SRC}" > /home/pi/${GIT_SRC_FILE}
 
 # Reboot
 printf "\nA reboot is required before using the software\n\n"
