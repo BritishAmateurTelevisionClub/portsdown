@@ -57,20 +57,6 @@ printf "\nCommencing update.\n\n"
 
 cd /home/pi
 
-DisplayUpdateMsg "Portsdown Updates Disabled\n\nXXX-------"
-
-sleep 10
-
-DisplayUpdateMsg "Check BATC Forum.  Rebooting\n\nXXX-------"
-
-sleep 5
-# Turn off swap to prevent reboot hang
-sudo swapoff -a
-sudo shutdown -r now  # Seems to be more reliable than reboot
-
-exit
-
-
 ## Check which update to load. From M0DNY 201905090
 GIT_SRC_FILE=".portsdown_gitsrc"
 if [ -e ${GIT_SRC_FILE} ]; then
