@@ -34,6 +34,23 @@ DisplayRebootMsg() {
   (sleep 1; sudo killall -9 fbi >/dev/null 2>/dev/null) &  ## kill fbi once it has done its work
 }
 
+############ Function to Read from Config File ###############
+
+get_config_var() {
+lua - "$1" "$2" <<EOF
+local key=assert(arg[1])
+local fn=assert(arg[2])
+local file=assert(io.open(fn))
+for line in file:lines() do
+local val = line:match("^#?%s*"..key.."=(.*)$")
+if (val ~= nil) then
+print(val)
+break
+end
+end
+EOF
+}
+
 reset
 
 printf "\nCommencing update.\n\n"
@@ -88,6 +105,7 @@ DisplayUpdateMsg "Step 3 of 10\nSaving Current Config\n\nXXX-------"
 
 PATHSCRIPT="/home/pi/rpidatv/scripts"
 PATHUBACKUP="/home/pi/user_backups"
+PCONFIGFILE="/home/pi/rpidatv/scripts/portsdown_config.txt"
 
 # Note previous version number
 cp -f -r /home/pi/rpidatv/scripts/installed_version.txt /home/pi/prev_installed_version.txt
@@ -306,6 +324,18 @@ touch rpidatv.c
 make clean
 make
 sudo make install
+
+# Test if the device is a LimeNet Micro which needs the dt-blob.bin changing
+# (0 for LimeNet Micro detected, 1 for not detected)
+cat /proc/device-tree/model | grep 'Raspberry Pi Compute Module 3' >/dev/null 2>/dev/null
+LIMENET_RESULT="$?"
+
+if [ "$LIMENET_RESULT" == 0 ]; then
+  # LimeNET-micro detected, so change dt-blob.bin
+  sudo cp /home/pi/rpidatv/scripts/configs/dt-blob.bin.lmn /boot/dt-blob.bin
+fi
+
+
 
 # Compile rpidatv gui
 sudo killall -9 rpidatvgui
@@ -664,6 +694,41 @@ cp -f -r "$PATHUBACKUP"/TXstopextras.sh "$PATHSCRIPT"/TXstopextras.sh
 if grep -q "startup=Keyed_Stream_boot" /home/pi/rpidatv/scripts/portsdown_config.txt; then
   sudo crontab /home/pi/rpidatv/scripts/configs/rptrcron
 fi
+
+# Install updated Waveshare driver if required
+# First Check user-requested display type
+DISPLAY=$(get_config_var display $PCONFIGFILE)
+if [ "$DISPLAY" == "Waveshare" ]; then
+  # Check updated driver tag (201907070 in config.txt)
+  if ! grep -q "201907070" /boot/config.txt; then
+    # This section modifies and replaces the end of /boot/config.txt
+    # to allow (only) the correct LCD drivers to be loaded at next boot
+
+    # Set constants for the amendment of /boot/config.txt
+    PATHCONFIGS="/home/pi/rpidatv/scripts/configs"  ## Path to config files
+    lead='^## Begin LCD Driver'                     ## Marker for start of inserted text
+    tail='^## End LCD Driver'                       ## Marker for end of inserted text
+    CHANGEFILE="/boot/config.txt"                   ## File requiring added text
+    APPENDFILE=$PATHCONFIGS"/lcd_markers.txt"       ## File containing both markers
+    TRANSFILE=$PATHCONFIGS"/transfer.txt"           ## File used for transfer
+
+    grep -q "$lead" "$CHANGEFILE"     ## Is the first marker already present?
+    if [ $? -ne 0 ]; then
+      sudo bash -c 'cat '$APPENDFILE' >> '$CHANGEFILE' '  ## If not append the markers
+    fi
+
+    # Select the correct driver text
+    INSERTFILE=$PATHCONFIGS"/waveshare.txt"
+
+    # Replace whatever is between the markers with the driver text
+    sed -e "/$lead/,/$tail/{ /$lead/{p; r $INSERTFILE
+      }; /$tail/p; d }" $CHANGEFILE >> $TRANSFILE
+
+    sudo cp "$TRANSFILE" "$CHANGEFILE"          ## Copy from the transfer file
+    rm $TRANSFILE                               ## Delete the transfer file
+  fi
+fi
+
 
 DisplayUpdateMsg "Step 9 of 10\nInstalling FreqShow SW\n\nXXXXXXXXX-"
 
