@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Stretch Version by davecrump on 201910100
+# Stretch Version by davecrump on 201910230
 
 # Check which source needs to be loaded # From M0DNY 201905090
 GIT_SRC="BritishAmateurTelevisionClub"
@@ -44,6 +44,7 @@ sudo apt-get -y install python-pip pandoc python-numpy pandoc python-pygame gdeb
 sudo apt-get -y install libsqlite3-dev libi2c-dev # 201811300 Lime
 sudo apt-get -y install sshpass  # 201905090 For Jetson Nano
 sudo apt-get -y install libbsd-dev # 201910100 for raspi2raspi
+sudo apt-get -y install libasound2-dev  # 201910230 for LongMynd tone
 
 sudo pip install pyrtlsdr  #20180101 FreqShow
 
@@ -296,6 +297,7 @@ wget https://github.com/${GIT_SRC}/longmynd/archive/master.zip
 unzip -o master.zip
 mv longmynd-master longmynd
 rm master.zip
+
 cd longmynd
 make
 gcc fake_read.c -o fake_read
@@ -396,7 +398,7 @@ cd build
 cmake ..
 make
 sudo make install
-
+cd /home/pi
 
 # Copy the components to support Lime Grove
 cp -r /home/pi/rpidatv/scripts/configs/dvbsdr/ /home/pi/dvbsdr/
