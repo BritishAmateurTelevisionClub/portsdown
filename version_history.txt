@@ -1,3 +1,9 @@
+201912100
+Add Autoset of LNB Offset for LongMynd
+Grey-out unavailable video source buttons
+Cure file handle leak
+Prep for Migration to Buster
+
 201910230
 Display Additional Receive Parameters
 Improve receive display appearance and behaviour
